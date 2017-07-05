@@ -1,0 +1,51 @@
+#!/usr/bin/env python
+"""
+Hyphenates ISBN numbers in a CSV file
+
+usage: hyphenate-isbns [inputfile] [outputfile]
+
+Dependencies:
+  isbn-hyphenate==1.0.4
+"""
+
+import csv
+import sys
+import isbn_hyphenate
+
+ISBN_COL   = 2 # column number for ISBN (starts at 0)
+SKIP_FIRST = True # do not attempt to hyphente header
+TOLERANT   = True # do not break if hyphenation fails
+
+def process_csv(infile, outfile):
+    i = open(infile, 'rb')
+    o = open(outfile, 'wb')
+    rd = csv.reader(i)
+    wt = csv.writer(o, delimiter=',', quotechar='"')
+
+    count = 0
+    for row in rd:
+        outrow = row
+
+        if not count == 0 or not SKIP_FIRST:
+            try:
+                isbn_dashless = row[ISBN_COL]
+                outrow[ISBN_COL] = isbn_hyphenate.hyphenate(isbn_dashless)
+            except isbn_hyphenate.IsbnMalformedError:
+                if TOLERANT:
+                    outrow[ISBN_COL] = isbn_dashless
+                else:
+                    print >> sys.stderr, "Line %d: %s" % (count + 1, row)
+                    raise
+        wt.writerow(outrow)
+        count += 1
+
+
+def run():
+    _, inputf, outputf = sys.argv
+    assert inputf
+    assert outputf
+
+    process_csv(inputf, outputf)
+
+if __name__ == '__main__':
+    run()
